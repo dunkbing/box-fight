@@ -26,7 +26,14 @@ window.Game = {Camera, Player, Map, controls };
   const player = new Game.Player(50, 50);
   const obstacles = []
   for(let i = 0; i < 5; i++){
-    obstacles.push(new Obstacle(Math.random()*room.width, Math.random()*room.height))
+    fetch(`https://pokeapi.co/api/v2/pokemon/${i}/`)
+      .then(res => res.json())
+      .then(pokemon => {
+        const image = document.createElement('img')
+        image.src = pokemon.sprites.front_default
+        image.width = 50
+        obstacles.push(new Obstacle(Math.random()*room.width-50, Math.random()*room.height-50, image))
+      })
   }
 
   // Set the right viewport size for the camera
