@@ -1,80 +1,80 @@
-import { Rectangle } from './rectangle.js'
-import Camera from './camera.js'
-import Player from './player.js'
-import Map from './map.js'
+import Camera from '../entities/camera.js'
+import Player from '../entities/player.js'
+import Map from '../entities/map.js'
+import Obstacle from '../entities/obstacle.js';
 
-
-// <-- configure Game controls:
 const controls = {
   left: false,
   up: false,
   right: false,
   down: false,
 };
-window.Game = { Rectangle, Camera, Player, Map, controls };
+window.Game = {Camera, Player, Map, controls };
 
 (function () {
   const canvas = document.getElementById("gameCanvas");
   const context = canvas.getContext("2d");
 
-  const FPS = 60;
-  const INTERVAL = 1000 / FPS; // milliseconds
-  const STEP = INTERVAL / 1000 // seconds
-
   const room = {
-    width: 500,
-    height: 500,
-    map: new Game.Map(500, 500)
+    width: 785,
+    height: 441,
+    map: new Game.Map(785, 441)
   };
 
   room.map.generate();
 
   const player = new Game.Player(50, 50);
+  const obstacles = []
+  for(let i = 0; i < 5; i++){
+    obstacles.push(new Obstacle(Math.random()*room.width, Math.random()*room.height))
+  }
 
   // Set the right viewport size for the camera
-  var vWidth = Math.min(room.width, canvas.width);
-  var vHeight = Math.min(room.height, canvas.height);
-  console.log(vWidth, vHeight)
+  let vWidth = Math.min(room.width, canvas.width);
+  let vHeight = Math.min(room.height, canvas.height);
 
   // Setup the camera
   const camera = new Game.Camera(0, 0, vWidth, vHeight, room.width, room.height);
   camera.follow(player, vWidth / 2, vHeight / 2);
 
-  const update = function () {
+  const update = function (STEP) {
     player.update(STEP, room.width, room.height);
     camera.update();
   }
 
   const draw = function () {
     context.clearRect(0, 0, canvas.width, canvas.height);
-    room.map.draw(context, camera.xView, camera.yView);
-    player.draw(context, camera.xView, camera.yView);
+    room.map.draw(context, camera.x, camera.y);
+    player.draw(context, camera.x, camera.y);
+    for(const obstacle of obstacles){
+      obstacle.draw(context, camera.x, camera.y)
+    }
   }
 
+  let paused = false
+  let now = performance.now()
   const gameLoop = function () {
-    update();
+    const deltaTime = performance.now()-now
+    now = performance.now()
+    update(deltaTime/1000);
     draw();
+    Game.printFPS(deltaTime)
   }
-
-  var runningId = -1;
 
   Game.play = function () {
-    if (runningId == -1) {
-      runningId = setInterval(function () {
-        gameLoop();
-      }, INTERVAL);
-      console.log("play");
+    if(!paused){
+      gameLoop()
     }
+    requestAnimationFrame(Game.play)
   }
 
   Game.togglePause = function () {
-    if (runningId == -1) {
-      Game.play();
-    } else {
-      clearInterval(runningId);
-      runningId = -1;
-      console.log("paused");
-    }
+    paused = !paused
+  }
+
+  Game.printFPS = function(deltaTime){
+    context.font = '20px Arial'
+    context.fillText(`fps: ${(1000/deltaTime).toFixed(2)}`, 10, 20)
   }
 })();
 window.addEventListener("keydown", function (e) {

@@ -1,8 +1,12 @@
+import { Rectangle } from "./rectangle.js"
+
 export default function Map(width, height){
-  this.width = width
-  this.height = height
+  Rectangle.call(this, 0, 0, width, height)
   this.background = null
 }
+
+Map.prototype = new Rectangle()
+Map.prototype.constructor = Map
 
 Map.prototype.generate = function() {
   /* let ctx = document.createElement("canvas").getContext("2d");
@@ -54,6 +58,5 @@ Map.prototype.draw = function(context, xView, yView) {
   let dy = 0;
   let dWidth = sWidth;
   let dHeight = sHeight;
-  console.log(dWidth, dHeight)
   context.drawImage(this.background, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
 }
