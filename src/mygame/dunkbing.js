@@ -1,11 +1,13 @@
 import Camera from '../entities/camera.js'
 import Player from '../entities/player.js'
 import Map from '../entities/map.js'
+import QuadTree from '../entities/quadtree.js'
 import Obstacle from '../entities/obstacle.js';
 import createPlatforms from './platforms.js'
 import Bullet from './bullet.js';
 import {distance, reduceVect} from '../entities/utils.js';
 import {explode} from '../entities/particle.js';
+import { Rectangle } from '../entities/rectangle.js';
 
 const controls = {
   left: false,
@@ -14,7 +16,7 @@ const controls = {
   down: false,
   space: false
 };
-window.Game = {Camera, Player, Map, controls };
+window.Game = {Camera, Player, Map, QuadTree, controls };
 
 (function () {
   const canvas = document.getElementById("gameCanvas");
@@ -29,8 +31,10 @@ window.Game = {Camera, Player, Map, controls };
   room.map.generate();
 
   const player = new Game.Player(50, 50, 50, 50);
+  const quadTree = new QuadTree(0, new Rectangle(0, 0, room.width, room.height));
   const obstacles = createPlatforms()
   const bullets = []
+  const allObjects = [...obstacles]
 
   // Set the right viewport size for the camera
   let vWidth = Math.min(room.width, canvas.width);
@@ -71,6 +75,21 @@ window.Game = {Camera, Player, Map, controls };
           bullets.splice(bullets.indexOf(bullet), 1)
           explode(bullet.x, bullet.y)
         }
+      }
+    }
+  }
+
+  const quadTreeCollisionCheck = function(){
+    quadTree.clear();
+    for(let i = 0; i < allObjects.length; i++){
+      quadTree.insert(allObjects[i])
+    }
+    let returnObjects = []
+    for(let i = 0; i < allObjects.length; i++){
+      returnObjects.splice(0, returnObjects.length)
+      quadTree.retrieve(returnObjects, allObjects[i])
+      for(let x = 0; x < returnObjects.length; x++){
+        
       }
     }
   }
