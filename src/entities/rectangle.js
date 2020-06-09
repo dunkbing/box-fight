@@ -1,10 +1,12 @@
-function Rectangle(x, y, width, height){
+function Rectangle(x, y, width, height, sprite){
   this.x = x || 0
   this.y = y || 0
   this.width = width || 0
-  this.height = height || 0
+	this.height = height || 0
+	this.sprite = sprite
   this.right = this.x+this.width
-  this.bottom = this.y+this.height
+	this.bottom = this.y+this.height
+	this.onGround = this.y+this.height === this.bottom
 }
 
 Rectangle.prototype.set = function(x, y, width, height){

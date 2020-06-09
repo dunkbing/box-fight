@@ -31,14 +31,13 @@ Map.prototype.generate = function() {
   }
   ctx.restore();
 
-  // store the generate map as this image texture
   this.image = new Image();
-  this.image.src = ctx.canvas.toDataURL("image/png"); */
+  this.image.src = ctx.canvas.toDataURL("image/png");
+  this.background = this.image;
+  ctx = null; */
   this.background = new Image()
-  this.background.src = '../game-map.jpg'
+  this.background.src = '../bg.png'
 
-  // clear context
-  //ctx = null;
 }
 
 Map.prototype.draw = function(context, xView, yView) {
