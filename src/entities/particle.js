@@ -11,7 +11,7 @@ const explode = (x, y) => {
 
   c.style.position = 'absolute';
   c.style.left = (x - 50) + 'px';
-  c.style.top = (y - 100) + 'px';
+  c.style.top = (y - 50) + 'px';
   c.style.pointerEvents = 'none';
   c.style.width = 100 + 'px';
   c.style.height = 100 + 'px';

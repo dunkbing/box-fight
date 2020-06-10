@@ -6,6 +6,8 @@ function Rectangle(x, y, width, height, sprite){
 	this.sprite = sprite
   this.right = this.x+this.width
 	this.bottom = this.y+this.height
+	this.midX = this.x+this.width/2
+	this.midY = this.y+this.height/2
 	this.onGround = this.y+this.height === this.bottom
 }
 

@@ -1,0 +1,25 @@
+{
+  "name": "canvas-game-engine",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node --experimental-modules server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dunkbing/canvas-game-engine.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dunkbing/canvas-game-engine/issues"
+  },
+  "homepage": "https://github.com/dunkbing/canvas-game-engine#readme",
+  "dependencies": {
+    "sucrase": "^3.15.0",
+    "websocket": "^1.0.31"
+  }
+}

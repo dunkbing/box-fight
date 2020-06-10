@@ -5,7 +5,7 @@ import QuadTree from '../entities/quadtree.js'
 import Obstacle from '../entities/obstacle.js';
 import createPlatforms from './platforms.js'
 import Bullet from './bullet.js';
-import {distance, reduceVect} from '../entities/utils.js';
+import {distance, normalizeVect} from '../entities/vector.js';
 import {explode} from '../entities/particle.js';
 import { Rectangle } from '../entities/rectangle.js';
 
@@ -16,8 +16,37 @@ const controls = {
   down: false,
   space: false
 };
-window.Game = {Camera, Player, Map, QuadTree, controls };
 
+window.Game = {Camera, Player, Map, QuadTree, controls };
+/* 
+const createPlayer = (function(){
+  let player
+  const socket = new WebSocket('ws://localhost:8080', 'echo-protocol');
+  socket.onopen = function (e) {
+    socket.send(JSON.stringify(new Player(50, 50, 50, 50)))
+  };
+
+  socket.onmessage = function (event) {
+    console.log('Message from server ', event.data);
+    player = JSON.parse(event.data)
+    console.log(player)
+  };
+
+  socket.onclose = function (event) {
+    if (event.wasClean) {
+      console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+      console.log(event.data)
+    } else {
+      console.log('[close] Connection died');
+    }
+  };
+
+  socket.onerror = function (error) {
+    console.log(`error ${error.message}`)
+  };
+  //return new Game.Player(player.x, player.y, player.width, player.height)
+})();
+ */
 (function () {
   const canvas = document.getElementById("gameCanvas");
   const context = canvas.getContext("2d");
@@ -30,11 +59,18 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
 
   room.map.generate();
 
-  const player = new Game.Player(50, 50, 50, 50);
+  let player = new Game.Player(50, 50, 50, 50);
+  Game.player = player
+  let point = null
+  let d, grabbingBullet //distance from player to grabbing point/bullet
+  //let player = createPlayer
   const quadTree = new QuadTree(0, new Rectangle(0, 0, room.width, room.height));
   const obstacles = createPlatforms()
   const bullets = []
-  const allObjects = [...obstacles]
+  const allObjects = [...obstacles, player]
+  for(let i = 0; i < 50; i++){
+    allObjects.push(new Obstacle(Math.random()*room.width, Math.random()*room.height, Math.random()*200+50, Math.random()*20+10))
+  }
 
   // Set the right viewport size for the camera
   let vWidth = Math.min(room.width, canvas.width);
@@ -50,30 +86,62 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     camera.update();
     checkPlayerCollide()
     checkBulletsCollide()
+    //bruteForceCollisionCheck()
+    //quadTreeCollisionCheck()
   }
 
   const checkPlayerCollide = function(){
-    for(const obstacle of obstacles){
-      const collisionDirection = player.collide(obstacle)
-      if (collisionDirection == "left" || collisionDirection == "right") {
-        player.velX = 0
-      } else if (collisionDirection == "bottom") {
-        console.log('bot')
-        player.jumping = false
-        player.onGround = true
-      } else if (collisionDirection == "top") {
-        player.velY *= -1
+    for(const obstacle of allObjects){
+      if(obstacle !== player){
+        const collisionDirection = player.collide(obstacle)
+        if (collisionDirection == "left" || collisionDirection == "right") {
+          player.velX = 0
+          player.jumping = false
+          player.onGround = true
+        } else if (collisionDirection == "bottom") {
+          player.jumping = false
+          player.onGround = true
+        } else if (collisionDirection == "top") {
+          player.velY *= -1
+        }
       }
     }
   }
 
   const checkBulletsCollide = function(){
-    for(const obstacle of obstacles){
+    for(const obstacle of allObjects){
       for(const bullet of bullets){
-        const collisionDirection = bullet.collide(obstacle)
-        if(collisionDirection){
-          bullets.splice(bullets.indexOf(bullet), 1)
-          explode(bullet.x, bullet.y)
+        if(obstacle !== player){
+          const collisionDirection = bullet.collide(obstacle)
+          if(collisionDirection){
+            explode(bullet.x-camera.x, bullet.y-camera.y)
+            let explodedBullet = bullets.splice(bullets.indexOf(bullet), 1)[0]
+            if(explodedBullet === grabbingBullet) {
+              point = {x: grabbingBullet.x, y: grabbingBullet.y}
+              grabbingBullet = null
+            }
+            //console.log(explodedBullet === grabbingBullet)
+            explodedBullet = null
+            //console.log(explodedBullet)
+          }
+        }
+      }
+    }
+  }
+
+  const bruteForceCollisionCheck = function(){
+    for(const obj of allObjects){
+      for(const obj2 of allObjects){
+        if(obj !== obj2){
+          const collisionDirection = obj2.collide(obj)
+          if (collisionDirection == "left" || collisionDirection == "right") {
+            player.velX = 0
+          } else if (collisionDirection == "bottom") {
+            player.jumping = false
+            player.onGround = true
+          } else if (collisionDirection == "top") {
+            player.velY *= -1
+          }
         }
       }
     }
@@ -81,16 +149,32 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
 
   const quadTreeCollisionCheck = function(){
     quadTree.clear();
-    for(let i = 0; i < allObjects.length; i++){
-      quadTree.insert(allObjects[i])
+    for(const obj of allObjects){
+      quadTree.insert(obj)
     }
     let returnObjects = []
     for(let i = 0; i < allObjects.length; i++){
-      returnObjects.splice(0, returnObjects.length)
-      quadTree.retrieve(returnObjects, allObjects[i])
-      for(let x = 0; x < returnObjects.length; x++){
-        
+      if(allObjects[i] === player){
+        returnObjects.splice(0, returnObjects.length)
+        returnObjects = quadTree.retrieve(returnObjects, allObjects[i])
+        for(let x = 0; x < returnObjects.length; x++){
+          const collisionDirection = player.collide(returnObjects[x])
+          if (collisionDirection == "left" || collisionDirection == "right") {
+            player.velX = 0
+          } else if (collisionDirection == "bottom") {
+            player.jumping = false
+            player.onGround = true
+          } else if (collisionDirection == "top") {
+            player.velY *= -1
+          }
+        }
       }
+    }
+  }
+
+  const drawAllObject = function(){
+    for(const obj of allObjects){
+      obj.draw(context, camera.x, camera.y)
     }
   }
 
@@ -98,6 +182,10 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     context.clearRect(0, 0, canvas.width, canvas.height);
     room.map.draw(context, camera.x, camera.y);
     player.draw(context, camera.x, camera.y);
+    
+    if(point !== null){
+      player.useGrabbingGun(point, d, context, grabbingBullet)
+    }
     for(const obstacle of obstacles){
       obstacle.draw(context, camera.x, camera.y)
     }
@@ -108,6 +196,7 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
         bullets.splice(bullets.indexOf(bullet), 1);
       } */
     }
+    drawAllObject()
   }
 
   let paused = false
@@ -183,10 +272,19 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
 
   canvas.onclick = (e) => {
     const d = distance({x: player.x+player.width/2-camera.x, y: player.y+player.height/2-camera.y}, {x: e.clientX, y: e.clientY});
-    const vect = reduceVect({x: e.clientX-(player.x+player.width/2-camera.x), y: e.clientY-(player.y+player.height/2-camera.y)}, d)
+    const vect = normalizeVect({x: e.clientX-(player.x+player.width/2-camera.x), y: e.clientY-(player.y+player.height/2-camera.y)}, d)
     const velX = vect.x;
     const velY = vect.y;
     bullets.push(new Bullet(player.x+player.width/2, player.y+player.height/2, 10, 10, null, velX, velY))
   }
+
+  canvas.oncontextmenu = (e) => {
+    e.preventDefault()
+    point = {x: e.clientX+camera.x, y: e.clientY+camera.y}
+    d = distance({x: player.x+player.width/2-camera.x, y: player.y+player.height/2-camera.y}, point);
+    grabbingBullet = new Bullet(player.x+player.width/2, player.y+player.height/2, 10, 10, null, 1)
+    bullets.push(grabbingBullet)
+  }
+
   window.onload = window.Game.play
 })();
