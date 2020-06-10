@@ -1,5 +1,7 @@
 import {Rectangle} from './rectangle.js'
 import {distance, normalizeVect} from './vector.js';
+import Gun from './gun.js';
+
 export default function Player(x, y, width, height, sprite){
   //x, y represent the coordinate of player's center on the game world(not the canvas)
   Rectangle.call(this, x, y, width, height, sprite)
@@ -7,6 +9,10 @@ export default function Player(x, y, width, height, sprite){
   this.velX = 200
   this.velY = 200
   this.g = 25
+  this.gunImg = new Image(32, 32)
+  this.gunImg.src = '../../gun.png'
+  this.gunAngle = 0
+  //this.gun = new Gun(this.x, this.y)
 }
 
 Player.prototype = new Rectangle()
@@ -36,7 +42,10 @@ Player.prototype.update = function(/*time between each frame in seconds*/deltaTi
     this.y += this.velY * deltaTime
   }
   if(Game.controls.space){
-    this.velY = 200
+    if(this.velY === 0 && this.g === 0){
+      this.velY = 200
+      this.g = 25
+    }
   }
   //this.speed *= this.friction
   // don't let player leaves the world's boundary
@@ -66,6 +75,12 @@ Player.prototype.draw = function(context, xView, yView) {
     context.fillRect((this.x), (this.y), this.width, this.height);
   }
   context.restore();
+  //this.gun.draw(this.x-xView, this.y-yView, this.gunAngle)
+  //this.drawGun(context, xView, yView)
+}
+
+Player.prototype.drawGun = function(context, lineToX, lineToY){
+  shoot(this.x+this.width/2, this.y+this.height/2, lineToX, lineToY, context)
 }
 
 Player.prototype.useGrabbingGun = function(point, d, context, bullet){
@@ -81,13 +96,14 @@ Player.prototype.useGrabbingGun = function(point, d, context, bullet){
     bullet.velX = velX
     bullet.velY = velY
     shoot(this.x+this.width/2, this.y+this.height/2, bullet.x, bullet.y, context)
-  } else if(d >= 25){
+  } else if(d >= 25 && point.available){
     this.x += velX*5;
     this.y += velY*5;
     shoot(this.x+this.width/2, this.y+this.height/2, point.x, point.y, context)
     d = distance({x: this.x+this.width/2, y: this.y+this.height/2}, point);
-  } else {
-    point = null
+    if(d <= 25){
+      point.available = false
+    }
   }
 }
 
@@ -101,6 +117,7 @@ function shoot(x1, y1, x2, y2, ctx){
 function drawLine(x1, y1, x2, y2, ctx){
   ctx.strokeStyle = "red"
   ctx.lineWidth = 10;
+  ctx.lineCap = "round"
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);

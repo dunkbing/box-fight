@@ -5,7 +5,7 @@ import QuadTree from '../entities/quadtree.js'
 import Obstacle from '../entities/obstacle.js';
 import createPlatforms from './platforms.js'
 import Bullet from './bullet.js';
-import {distance, normalizeVect} from '../entities/vector.js';
+import {distance, normalizeVect, getAngle} from '../entities/vector.js';
 import {explode} from '../entities/particle.js';
 import { Rectangle } from '../entities/rectangle.js';
 
@@ -98,6 +98,7 @@ const createPlayer = (function(){
           player.velX = 0
           player.jumping = false
           player.onGround = true
+          //point.available = false
         } else if (collisionDirection == "bottom") {
           player.jumping = false
           player.onGround = true
@@ -117,7 +118,7 @@ const createPlayer = (function(){
             explode(bullet.x-camera.x, bullet.y-camera.y)
             let explodedBullet = bullets.splice(bullets.indexOf(bullet), 1)[0]
             if(explodedBullet === grabbingBullet) {
-              point = {x: grabbingBullet.x, y: grabbingBullet.y}
+              point = {x: grabbingBullet.x, y: grabbingBullet.y, available: true}
               grabbingBullet = null
             }
             //console.log(explodedBullet === grabbingBullet)
@@ -183,9 +184,12 @@ const createPlayer = (function(){
     room.map.draw(context, camera.x, camera.y);
     player.draw(context, camera.x, camera.y);
     
-    if(point !== null){
+    if(point && point.available){
       player.useGrabbingGun(point, d, context, grabbingBullet)
+    } else {
+      
     }
+
     for(const obstacle of obstacles){
       obstacle.draw(context, camera.x, camera.y)
     }
@@ -280,7 +284,7 @@ const createPlayer = (function(){
 
   canvas.oncontextmenu = (e) => {
     e.preventDefault()
-    point = {x: e.clientX+camera.x, y: e.clientY+camera.y}
+    point = {x: e.clientX+camera.x, y: e.clientY+camera.y, available: true}
     d = distance({x: player.x+player.width/2-camera.x, y: player.y+player.height/2-camera.y}, point);
     grabbingBullet = new Bullet(player.x+player.width/2, player.y+player.height/2, 10, 10, null, 1)
     bullets.push(grabbingBullet)
