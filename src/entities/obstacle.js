@@ -20,7 +20,7 @@ Obstacle.prototype.draw = function(context, xView, yView) {
     context.imageSmoothingQuality = 'high';
     context.drawImage(this.sprite, (this.x - this.width / 2), (this.y - this.height / 2))
   } else{
-    context.fillRect((this.x), (this.y), this.width, this.height);
+    context.fillRect(this.x, this.y, this.width, this.height);
   }
   context.restore();
 }

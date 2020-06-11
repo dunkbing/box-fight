@@ -18,38 +18,11 @@ const controls = {
 };
 
 window.Game = {Camera, Player, Map, QuadTree, controls };
-/* 
-const createPlayer = (function(){
-  let player
-  const socket = new WebSocket('ws://localhost:8080', 'echo-protocol');
-  socket.onopen = function (e) {
-    socket.send(JSON.stringify(new Player(50, 50, 50, 50)))
-  };
 
-  socket.onmessage = function (event) {
-    console.log('Message from server ', event.data);
-    player = JSON.parse(event.data)
-    console.log(player)
-  };
-
-  socket.onclose = function (event) {
-    if (event.wasClean) {
-      console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
-      console.log(event.data)
-    } else {
-      console.log('[close] Connection died');
-    }
-  };
-
-  socket.onerror = function (error) {
-    console.log(`error ${error.message}`)
-  };
-  //return new Game.Player(player.x, player.y, player.width, player.height)
-})();
- */
 (function () {
   const canvas = document.getElementById("gameCanvas");
   const context = canvas.getContext("2d");
+  const socket = io()
 
   const room = {
     width: 1920,
@@ -60,14 +33,79 @@ const createPlayer = (function(){
   room.map.generate();
 
   let player = new Game.Player(50, 50, 50, 50);
+  player.id = Math.random()
+  console.log(player.id)
+  const otherPlayers = []
+  Game.otherPlayers = otherPlayers
+  
   Game.player = player
   let point = null
   let d, grabbingBullet //distance from player to grabbing point/bullet
   //let player = createPlayer
   const quadTree = new QuadTree(0, new Rectangle(0, 0, room.width, room.height));
   const obstacles = createPlatforms()
-  const bullets = []
-  const allObjects = [...obstacles, player]
+  let bullets = []
+  let allObjects = [...obstacles]
+  socket.emit('create-obstacle', allObjects)
+  socket.emit('player-connect', {player, allObstacles: allObjects})
+  socket.on('player-connect', function(data){
+    if(data.allObstacles){
+      allObjects = data.allObstacles
+      for(const obj of allObjects){
+        Object.setPrototypeOf(obj, Obstacle.prototype)
+      }
+    }
+    const playerList = data.playerList
+    for(const id in playerList){
+      if(Number(id) !== player.id){
+        const p = playerList[id]
+        Object.setPrototypeOf(p, Player.prototype)
+        p.update = function(deltaTime, worldWidth, worldHeight){
+          if(p.g){
+            p.y += p.velY*deltaTime
+            if(p.velY < 500) p.velY += p.g
+          }
+        }
+        otherPlayers.push(p)
+        //allObjects.push(p)
+        console.log('new object')
+        //console.log(Number(id) === player.id)
+        //console.log(otherPlayers)
+      }
+    }
+  })
+  socket.on('player-move', function(data){
+    const {x, y, id} = data
+    for(const player of otherPlayers){
+      if(player.id === Number(id)){
+        player.x = x
+        player.y = y
+      }
+    }
+  })
+
+  socket.on('shooting', function(data){
+    const bulletList = data
+    for(const bullet of bulletList){
+      Object.setPrototypeOf(bullet, Bullet.prototype)
+    }
+    bullets = bullets.concat(bulletList)
+  })
+
+  socket.on('use-grabbing-gun', function(data){
+    const {playerId, point, d, grabbingBullet} = data
+    console.log(otherPlayers, playerId)
+    const player = otherPlayers.find(p => p.id == playerId)
+    console.log(player)
+    if(player != null){
+      console.log('using grabbing gun')
+      Object.setPrototypeOf(player, Player.prototype)
+      Object.setPrototypeOf(grabbingBullet, Bullet.prototype)
+      bullets.push(grabbingBullet)
+      player.useGrabbingGun(point, d, context, grabbingBullet)
+    }
+  })
+
   for(let i = 0; i < 50; i++){
     allObjects.push(new Obstacle(Math.random()*room.width, Math.random()*room.height, Math.random()*200+50, Math.random()*20+10))
   }
@@ -83,9 +121,14 @@ const createPlayer = (function(){
 
   const update = function (STEP) {
     player.update(STEP, room.width, room.height);
+    for(const player of otherPlayers){
+      player.update(STEP, room.width, room.height)
+    }
     camera.update();
     checkPlayerCollide()
+    checkOtherPlayerCollide()
     checkBulletsCollide()
+    //checkBulletsCollideOtherPlayer()
     //bruteForceCollisionCheck()
     //quadTreeCollisionCheck()
   }
@@ -107,23 +150,96 @@ const createPlayer = (function(){
         }
       }
     }
+    for(const other of otherPlayers){
+      const collisionDirection = player.collide(other)
+      if (collisionDirection == "left" || collisionDirection == "right") {
+        player.velX = 0
+        player.jumping = false
+        player.onGround = true
+        //point.available = false
+      } else if (collisionDirection == "bottom") {
+        player.jumping = false
+        player.onGround = true
+      } else if (collisionDirection == "top") {
+        //player.velY *= -1
+      }
+    }
+  }
+
+  const checkOtherPlayerCollide = function(){
+    for(const obstacle of allObjects){
+      for(const player of otherPlayers){
+        const collisionDirection = player.collide(obstacle)
+        if (collisionDirection == "left" || collisionDirection == "right") {
+          player.velX = 0
+          player.jumping = false
+          player.onGround = true
+          //point.available = false
+        } else if (collisionDirection == "bottom") {
+          player.jumping = false
+          player.onGround = true
+        } else if (collisionDirection == "top") {
+          player.velY *= -1
+        }
+      }
+    }
   }
 
   const checkBulletsCollide = function(){
-    for(const obstacle of allObjects){
-      for(const bullet of bullets){
+    for(const bullet of bullets){
+      for(const obstacle of allObjects){
         if(obstacle !== player){
           const collisionDirection = bullet.collide(obstacle)
           if(collisionDirection){
             explode(bullet.x-camera.x, bullet.y-camera.y)
             let explodedBullet = bullets.splice(bullets.indexOf(bullet), 1)[0]
+            if(explodedBullet){
+              socket.emit('bullet-exploded', explodedBullet.id)
+            }
+            if(grabbingBullet && explodedBullet === grabbingBullet) {
+              point = {x: grabbingBullet.x, y: grabbingBullet.y, available: true}
+              grabbingBullet = null
+            }
+            explodedBullet = null
+          }
+        }
+      }
+      for(const p of otherPlayers){
+        if(p.id !== bullet.playerId){
+          const collisionDirection = bullet.collide(p)
+          if(collisionDirection){
+            console.log(collisionDirection)
+            explode(bullet.x-camera.x, bullet.y-camera.y)
+            let explodedBullet = bullets.splice(bullets.indexOf(bullet), 1)[0]
+            if(explodedBullet){
+              socket.emit('bullet-exploded', explodedBullet.id)
+            }
             if(explodedBullet === grabbingBullet) {
               point = {x: grabbingBullet.x, y: grabbingBullet.y, available: true}
               grabbingBullet = null
             }
-            //console.log(explodedBullet === grabbingBullet)
             explodedBullet = null
-            //console.log(explodedBullet)
+          }
+        }
+      }
+    }
+  }
+  
+  const checkBulletsCollideOtherPlayer = function(){
+    for(const player of otherPlayers){
+      for(const bullet of bullets){
+        if(Number(bullet.playerId) !== Number(player.id)){
+          const collisionDirection = bullet.collide(player)
+          if(collisionDirection){
+            console.log(collisionDirection)
+            explode(bullet.x-camera.x, bullet.y-camera.y)
+            let explodedBullet = bullets.splice(bullets.indexOf(bullet), 1)[0]
+            socket.emit('bullet-exploded', explodedBullet.id)
+            if(explodedBullet === grabbingBullet) {
+              point = {x: grabbingBullet.x, y: grabbingBullet.y, available: true}
+              grabbingBullet = null
+            }
+            explodedBullet = null
           }
         }
       }
@@ -177,6 +293,16 @@ const createPlayer = (function(){
     for(const obj of allObjects){
       obj.draw(context, camera.x, camera.y)
     }
+    for(const player of otherPlayers){
+      player.draw(context, camera.x, camera.y)
+    }
+    for(const bullet of bullets){
+      bullet.draw(context, camera.x, camera.y)
+      bullet.update()
+      /* if(bullet.x+bullet.width<=0 || bullet.x>=camera.width || bullet.y+bullet.height<=0 || bullet.y>=camera.height){
+        bullets.splice(bullets.indexOf(bullet), 1);
+      } */
+    }
   }
 
   const draw = function () {
@@ -189,17 +315,7 @@ const createPlayer = (function(){
     } else {
       
     }
-
-    for(const obstacle of obstacles){
-      obstacle.draw(context, camera.x, camera.y)
-    }
-    for(const bullet of bullets){
-      bullet.draw(context, camera.x, camera.y)
-      bullet.update()
-      /* if(bullet.x+bullet.width<=0 || bullet.x>=camera.width || bullet.y+bullet.height<=0 || bullet.y>=camera.height){
-        bullets.splice(bullets.indexOf(bullet), 1);
-      } */
-    }
+    
     drawAllObject()
   }
 
@@ -210,6 +326,11 @@ const createPlayer = (function(){
     now = performance.now()
     update(deltaTime/1000);
     draw();
+    socket.emit('player-move', {
+      x: player.x,
+      y: player.y,
+      id: player.id
+    })
     Game.printFPS(deltaTime)
   }
 
@@ -279,7 +400,12 @@ const createPlayer = (function(){
     const vect = normalizeVect({x: e.clientX-(player.x+player.width/2-camera.x), y: e.clientY-(player.y+player.height/2-camera.y)}, d)
     const velX = vect.x;
     const velY = vect.y;
-    bullets.push(new Bullet(player.x+player.width/2, player.y+player.height/2, 10, 10, null, velX, velY))
+    const bullet = new Bullet(player.x+player.width/2, player.y+player.height/2, 10, 10, null, velX, velY)
+    bullet.id = Math.random()
+    bullet.playerId = player.id
+    socket.emit('shooting', bullet)
+    console.log(bullets)
+    //bullets.push(bullet)
   }
 
   canvas.oncontextmenu = (e) => {
@@ -287,7 +413,9 @@ const createPlayer = (function(){
     point = {x: e.clientX+camera.x, y: e.clientY+camera.y, available: true}
     d = distance({x: player.x+player.width/2-camera.x, y: player.y+player.height/2-camera.y}, point);
     grabbingBullet = new Bullet(player.x+player.width/2, player.y+player.height/2, 10, 10, null, 1)
+    grabbingBullet.g = 0
     bullets.push(grabbingBullet)
+    socket.emit('use-grabbing-gun', {playerId: player.id, point, d, grabbingBullet})
   }
 
   window.onload = window.Game.play

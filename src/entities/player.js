@@ -10,7 +10,7 @@ export default function Player(x, y, width, height, sprite){
   this.velY = 200
   this.g = 25
   this.gunImg = new Image(32, 32)
-  this.gunImg.src = '../../gun.png'
+  //this.gunImg.src = '../../gun.png'
   this.gunAngle = 0
   //this.gun = new Gun(this.x, this.y)
 }
@@ -72,7 +72,7 @@ Player.prototype.draw = function(context, xView, yView) {
   if(this.sprite){
     //context.drawImage
   } else {
-    context.fillRect((this.x), (this.y), this.width, this.height);
+    context.fillRect(this.x, this.y, this.width, this.height);
   }
   context.restore();
   //this.gun.draw(this.x-xView, this.y-yView, this.gunAngle)

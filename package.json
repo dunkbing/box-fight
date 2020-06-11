@@ -19,6 +19,8 @@
   },
   "homepage": "https://github.com/dunkbing/canvas-game-engine#readme",
   "dependencies": {
+    "express": "^4.17.1",
+    "socket.io": "^2.3.0",
     "sucrase": "^3.15.0",
     "websocket": "^1.0.31"
   }
