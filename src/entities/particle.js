@@ -3,7 +3,7 @@ const bubbles = 25;
 
 const r = (a, b, c) => parseFloat((Math.random() * ((a ? a : 1) - (b ? b : 0)) + (b ? b : 0)).toFixed(c ? c : 0));
 
-const explode = (x, y) => {
+const explode = (x, y, width, height) => {
   const particles = [];
   const ratio = window.devicePixelRatio;
   const c = document.createElement('canvas');
@@ -16,8 +16,8 @@ const explode = (x, y) => {
   c.style.width = 100 + 'px';
   c.style.height = 100 + 'px';
   c.style.zIndex = 100;
-  c.width = 200 * ratio;
-  c.height = 200 * ratio;
+  c.width = width || 200 * ratio;
+  c.height = height || 200 * ratio;
   document.body.appendChild(c);
 
   for (let i = 0; i < bubbles; i++) {

@@ -41,9 +41,9 @@ io.sockets.on('connection', function(socket){
   })
 
   socket.on('player-move', function(data){
-    const {x, y, id} = data
+    const {x, y, id, hp} = data
     for(const socketId in socketList){
-      socketList[socketId].emit('player-move', {x, y, id})
+      socketList[socketId].emit('player-move', {x, y, id, hp})
     }
   })
 

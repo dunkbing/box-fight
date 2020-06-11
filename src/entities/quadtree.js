@@ -35,8 +35,8 @@ QuadTree.prototype.split = function(){
 
 QuadTree.prototype.getIndex = function(pRect) {
   let index = -1;
-  let verticalMidpoint = this.bound.x + (this.bound.width / 2);
-  let horizontalMidpoint = this.bound.y + (this.bound.height / 2);
+  const verticalMidpoint = this.bound.x + (this.bound.width / 2);
+  const horizontalMidpoint = this.bound.y + (this.bound.height / 2);
 
   const topQuadrant = (pRect.y < horizontalMidpoint && pRect.y + pRect.height < horizontalMidpoint);
   const bottomQuadrant = (pRect.y > horizontalMidpoint);
@@ -47,7 +47,7 @@ QuadTree.prototype.getIndex = function(pRect) {
     } else if (bottomQuadrant) {
       index = 2;
     }
-   } else if (pRect.x > verticalMidpoint) {
+  } else if (pRect.x > verticalMidpoint) {
     if (topQuadrant) {
       index = 0;
     } else if (bottomQuadrant) {
@@ -70,15 +70,14 @@ QuadTree.prototype.insert = function(pRect) {
   this.objects.push(pRect);
 
   if (this.objects.length > this.maxObjects && this.level < this.maxLevel) {
-    if (this.nodes[0] == null) { 
+    if (!this.nodes[0]) { 
       this.split(); 
     }
-
     let i = 0;
     while (i < this.objects.length) {
-      let index = this.getIndex(this.objects[i]);
-      if (index != -1) {
-        this.nodes[index].insert(this.objects.splice(i, 1)[0]);
+      let index2 = this.getIndex(this.objects[i]);
+      if (index2 != -1) {
+        this.nodes[index2].insert(this.objects.splice(i, 1)[0]);
       } else {
         i++;
       }
@@ -88,8 +87,8 @@ QuadTree.prototype.insert = function(pRect) {
 
 QuadTree.prototype.retrieve = function(returnObjects, pRect) {
   let index = this.getIndex(pRect);
-  if (index != -1 && this.nodes[0] != null) {
-    this.nodes[index].retrieve(returnObjects, pRect);
+  if (index !== -1 && this.nodes[0]) {
+    this.nodes[index] = this.nodes[index].retrieve(returnObjects, pRect);
   }
 
   return returnObjects.concat(this.objects);

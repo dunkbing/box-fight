@@ -25,16 +25,16 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
   const socket = io()
 
   const room = {
-    width: 1920,
-    height: 1080,
-    map: new Game.Map(1920, 1080)
+    width: 1100,
+    height: 557,
+    map: new Game.Map(1100, 557)
   };
 
   room.map.generate();
 
-  let player = new Game.Player(50, 50, 50, 50);
+  let player = new Game.Player(Math.random()*room.width-50, 50, 50, 50);
+  player.totalBullet = 25
   player.id = Math.random()
-  console.log(player.id)
   const otherPlayers = []
   Game.otherPlayers = otherPlayers
   
@@ -67,19 +67,16 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
           }
         }
         otherPlayers.push(p)
-        //allObjects.push(p)
-        console.log('new object')
-        //console.log(Number(id) === player.id)
-        //console.log(otherPlayers)
       }
     }
   })
   socket.on('player-move', function(data){
-    const {x, y, id} = data
+    const {x, y, id, hp} = data
     for(const player of otherPlayers){
       if(player.id === Number(id)){
         player.x = x
         player.y = y
+        player.hp = hp
       }
     }
   })
@@ -94,21 +91,14 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
 
   socket.on('use-grabbing-gun', function(data){
     const {playerId, point, d, grabbingBullet} = data
-    console.log(otherPlayers, playerId)
     const player = otherPlayers.find(p => p.id == playerId)
-    console.log(player)
     if(player != null){
-      console.log('using grabbing gun')
       Object.setPrototypeOf(player, Player.prototype)
       Object.setPrototypeOf(grabbingBullet, Bullet.prototype)
       bullets.push(grabbingBullet)
       player.useGrabbingGun(point, d, context, grabbingBullet)
     }
   })
-
-  for(let i = 0; i < 50; i++){
-    allObjects.push(new Obstacle(Math.random()*room.width, Math.random()*room.height, Math.random()*200+50, Math.random()*20+10))
-  }
 
   // Set the right viewport size for the camera
   let vWidth = Math.min(room.width, canvas.width);
@@ -208,7 +198,6 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
         if(p.id !== bullet.playerId){
           const collisionDirection = bullet.collide(p)
           if(collisionDirection){
-            console.log(collisionDirection)
             explode(bullet.x-camera.x, bullet.y-camera.y)
             let explodedBullet = bullets.splice(bullets.indexOf(bullet), 1)[0]
             if(explodedBullet){
@@ -222,25 +211,26 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
           }
         }
       }
-    }
-  }
-  
-  const checkBulletsCollideOtherPlayer = function(){
-    for(const player of otherPlayers){
-      for(const bullet of bullets){
-        if(Number(bullet.playerId) !== Number(player.id)){
-          const collisionDirection = bullet.collide(player)
-          if(collisionDirection){
-            console.log(collisionDirection)
-            explode(bullet.x-camera.x, bullet.y-camera.y)
-            let explodedBullet = bullets.splice(bullets.indexOf(bullet), 1)[0]
-            socket.emit('bullet-exploded', explodedBullet.id)
-            if(explodedBullet === grabbingBullet) {
-              point = {x: grabbingBullet.x, y: grabbingBullet.y, available: true}
-              grabbingBullet = null
-            }
-            explodedBullet = null
+      if(bullet.playerId !== player.id && bullet !== grabbingBullet){
+        const collisionDirection = bullet.collide(player)
+        if(collisionDirection){
+          explode(bullet.x-camera.x, bullet.y-camera.y)
+          player.x += bullet.velX*10
+          player.y += bullet.velY*10
+          player.hp -= 10
+          if(player.hp <= 0) {
+            explode(player.x+player.width/2, player.y+player.height/2, 100, 100)
+            player = null
           }
+          let explodedBullet = bullets.splice(bullets.indexOf(bullet), 1)[0]
+          if(explodedBullet){
+            socket.emit('bullet-exploded', explodedBullet.id)
+          }
+          if(explodedBullet === grabbingBullet) {
+            point = {x: grabbingBullet.x, y: grabbingBullet.y, available: true}
+            grabbingBullet = null
+          }
+          explodedBullet = null
         }
       }
     }
@@ -271,9 +261,9 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     }
     let returnObjects = []
     for(let i = 0; i < allObjects.length; i++){
+      returnObjects.length = 0
       if(allObjects[i] === player){
-        returnObjects.splice(0, returnObjects.length)
-        returnObjects = quadTree.retrieve(returnObjects, allObjects[i])
+        returnObjects = quadTree.retrieve(returnObjects, quadTree.objects[i])
         for(let x = 0; x < returnObjects.length; x++){
           const collisionDirection = player.collide(returnObjects[x])
           if (collisionDirection == "left" || collisionDirection == "right") {
@@ -283,6 +273,8 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
             player.onGround = true
           } else if (collisionDirection == "top") {
             player.velY *= -1
+          }
+          if(returnObjects[x] !== player){
           }
         }
       }
@@ -308,12 +300,12 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
   const draw = function () {
     context.clearRect(0, 0, canvas.width, canvas.height);
     room.map.draw(context, camera.x, camera.y);
-    player.draw(context, camera.x, camera.y);
+    if(player !== null){
+      player.draw(context, camera.x, camera.y);
+    }
     
     if(point && point.available){
       player.useGrabbingGun(point, d, context, grabbingBullet)
-    } else {
-      
     }
     
     drawAllObject()
@@ -326,12 +318,9 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     now = performance.now()
     update(deltaTime/1000);
     draw();
-    socket.emit('player-move', {
-      x: player.x,
-      y: player.y,
-      id: player.id
-    })
-    Game.printFPS(deltaTime)
+    const {x, y, id, hp} = player
+    socket.emit('player-move', {x, y, id, hp})
+    Game.printInfo(deltaTime)
   }
 
   Game.play = function () {
@@ -345,14 +334,16 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     paused = !paused
   }
 
-  Game.printFPS = function(deltaTime){
+  Game.printInfo = function(deltaTime){
     context.font = '20px Arial'
     context.fillText(`fps: ${(1000/deltaTime).toFixed(2)}`, 10, 20)
   }
   window.addEventListener("keydown", function (e) {
     switch (e.key) {
-      case ' ': //space
+      case ' ':{//space
         Game.controls.space = true
+        point.available = false
+      } 
       case 'ArrowLeft':{ // left arrow
         player.velX = 200;
         Game.controls.left = true;
@@ -396,16 +387,16 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
   }, false);
 
   canvas.onclick = (e) => {
-    const d = distance({x: player.x+player.width/2-camera.x, y: player.y+player.height/2-camera.y}, {x: e.clientX, y: e.clientY});
-    const vect = normalizeVect({x: e.clientX-(player.x+player.width/2-camera.x), y: e.clientY-(player.y+player.height/2-camera.y)}, d)
-    const velX = vect.x;
-    const velY = vect.y;
-    const bullet = new Bullet(player.x+player.width/2, player.y+player.height/2, 10, 10, null, velX, velY)
-    bullet.id = Math.random()
-    bullet.playerId = player.id
-    socket.emit('shooting', bullet)
-    console.log(bullets)
-    //bullets.push(bullet)
+    if(player.totalBullet > 0){
+      const d = distance({x: player.x+player.width/2-camera.x, y: player.y+player.height/2-camera.y}, {x: e.clientX, y: e.clientY});
+      const vect = normalizeVect({x: e.clientX-(player.x+player.width/2-camera.x), y: e.clientY-(player.y+player.height/2-camera.y)}, d)
+      const velX = vect.x;
+      const velY = vect.y;
+      const bullet = new Bullet(player.x+player.width/2, player.y+player.height/2, 10, 10, null, velX, velY)
+      bullet.id = Math.random()
+      bullet.playerId = player.id
+      socket.emit('shooting', bullet)
+    }
   }
 
   canvas.oncontextmenu = (e) => {

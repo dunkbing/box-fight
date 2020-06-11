@@ -9,10 +9,8 @@ export default function Player(x, y, width, height, sprite){
   this.velX = 200
   this.velY = 200
   this.g = 25
-  this.gunImg = new Image(32, 32)
-  //this.gunImg.src = '../../gun.png'
-  this.gunAngle = 0
-  //this.gun = new Gun(this.x, this.y)
+  this.hp = 100
+  this.totalHealth = 100
 }
 
 Player.prototype = new Rectangle()
@@ -75,8 +73,17 @@ Player.prototype.draw = function(context, xView, yView) {
     context.fillRect(this.x, this.y, this.width, this.height);
   }
   context.restore();
-  //this.gun.draw(this.x-xView, this.y-yView, this.gunAngle)
-  //this.drawGun(context, xView, yView)
+  this.drawHealthBar(context, xView, yView)
+}
+
+Player.prototype.drawHealthBar = function(context, xView, yView){
+  context.save();
+  context.translate(-xView, -yView)
+  context.fillStyle = "red";
+  context.fillRect(this.x, this.y-17, this.width, 15);
+  context.fillStyle = "green";
+  context.fillRect(this.x, this.y-17, this.width*(this.hp/this.totalHealth), 15);
+  context.restore();
 }
 
 Player.prototype.drawGun = function(context, lineToX, lineToY){

@@ -12,11 +12,16 @@
 </head>
 <body>
   <canvas id="gameCanvas" width="400" height="400" ></canvas>
-  <h4>left click to shoot</h4>
-  <h4>right click to use grabbing gun</h4>
-  <h4>space to detach grabbing gun</h4>
+  <div>
+    <h4>left click to shoot</h4>
+    <h4>right click to use grabbing gun</h4>
+    <h4>space to detach grabbing gun</h4>
+  </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
   <script type="module" src="./src/mygame/dunkbing.js"></script>
+  <script>
+    document.querySelector('div').style.pointerEvents = "none"
+  </script>
   <!-- <script type="module" src="/src/mygame/client.js"></script> -->
 </body>
 </html>
