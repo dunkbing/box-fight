@@ -57,10 +57,10 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     }
     const playerList = data.playerList
     for(const id in playerList){
-      if(Number(id) !== player.id){
+      if(player && Number(id) !== player.id){
         const p = playerList[id]
         Object.setPrototypeOf(p, Player.prototype)
-        p.update = function(deltaTime, worldWidth, worldHeight){
+        p.update = function(deltaTime){
           if(p.g){
             p.y += p.velY*deltaTime
             if(p.velY < 500) p.velY += p.g
@@ -100,6 +100,13 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     }
   })
 
+  socket.on('player-died', function(playerId){
+    const deadPlayer = otherPlayers.find(p => p.id === playerId)
+    if(deadPlayer){
+      otherPlayers.splice(otherPlayers.indexOf(deadPlayer), 1)
+    }
+  })
+
   // Set the right viewport size for the camera
   let vWidth = Math.min(room.width, canvas.width);
   let vHeight = Math.min(room.height, canvas.height);
@@ -110,7 +117,9 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
   window.camera = camera
 
   const update = function (STEP) {
-    player.update(STEP, room.width, room.height);
+    if(player){
+      player.update(STEP, room.width, room.height);
+    }
     for(const player of otherPlayers){
       player.update(STEP, room.width, room.height)
     }
@@ -124,9 +133,27 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
   }
 
   const checkPlayerCollide = function(){
-    for(const obstacle of allObjects){
-      if(obstacle !== player){
-        const collisionDirection = player.collide(obstacle)
+    if(player){
+      for(const obstacle of allObjects){
+        if(obstacle !== player){
+          const collisionDirection = player.collide(obstacle)
+          if (collisionDirection == "left" || collisionDirection == "right") {
+            player.velX = 0
+            player.jumping = false
+            player.onGround = true
+            //point.available = false
+          } else if (collisionDirection == "bottom") {
+            player.jumping = false
+            player.onGround = true
+          } else if (collisionDirection == "top") {
+            player.velY *= -1
+          }
+        }
+      }
+    }
+    if(player){
+      for(const other of otherPlayers){
+        const collisionDirection = player.collide(other)
         if (collisionDirection == "left" || collisionDirection == "right") {
           player.velX = 0
           player.jumping = false
@@ -136,22 +163,8 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
           player.jumping = false
           player.onGround = true
         } else if (collisionDirection == "top") {
-          player.velY *= -1
+          //player.velY *= -1
         }
-      }
-    }
-    for(const other of otherPlayers){
-      const collisionDirection = player.collide(other)
-      if (collisionDirection == "left" || collisionDirection == "right") {
-        player.velX = 0
-        player.jumping = false
-        player.onGround = true
-        //point.available = false
-      } else if (collisionDirection == "bottom") {
-        player.jumping = false
-        player.onGround = true
-      } else if (collisionDirection == "top") {
-        //player.velY *= -1
       }
     }
   }
@@ -199,11 +212,12 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
           const collisionDirection = bullet.collide(p)
           if(collisionDirection){
             explode(bullet.x-camera.x, bullet.y-camera.y)
+            explode(player.x, player.y, 100, 100)
             let explodedBullet = bullets.splice(bullets.indexOf(bullet), 1)[0]
             if(explodedBullet){
               socket.emit('bullet-exploded', explodedBullet.id)
             }
-            if(explodedBullet === grabbingBullet) {
+            if(grabbingBullet && explodedBullet === grabbingBullet) {
               point = {x: grabbingBullet.x, y: grabbingBullet.y, available: true}
               grabbingBullet = null
             }
@@ -211,7 +225,7 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
           }
         }
       }
-      if(bullet.playerId !== player.id && bullet !== grabbingBullet){
+      if(player && bullet.playerId !== player.id && bullet !== grabbingBullet){
         const collisionDirection = bullet.collide(player)
         if(collisionDirection){
           explode(bullet.x-camera.x, bullet.y-camera.y)
@@ -220,13 +234,15 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
           player.hp -= 10
           if(player.hp <= 0) {
             explode(player.x+player.width/2, player.y+player.height/2, 100, 100)
+            socket.emit('player-died', player.id)
             player = null
+            //Game.togglePause()
           }
           let explodedBullet = bullets.splice(bullets.indexOf(bullet), 1)[0]
           if(explodedBullet){
             socket.emit('bullet-exploded', explodedBullet.id)
           }
-          if(explodedBullet === grabbingBullet) {
+          if(grabbingBullet && explodedBullet === grabbingBullet) {
             point = {x: grabbingBullet.x, y: grabbingBullet.y, available: true}
             grabbingBullet = null
           }
@@ -318,8 +334,10 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     now = performance.now()
     update(deltaTime/1000);
     draw();
-    const {x, y, id, hp} = player
-    socket.emit('player-move', {x, y, id, hp})
+    if(player){
+      const {x, y, id, hp} = player
+      socket.emit('player-move', {x, y, id, hp})  
+    }
     Game.printInfo(deltaTime)
   }
 
@@ -339,28 +357,30 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     context.fillText(`fps: ${(1000/deltaTime).toFixed(2)}`, 10, 20)
   }
   window.addEventListener("keydown", function (e) {
-    switch (e.key) {
-      case ' ':{//space
-        Game.controls.space = true
-        point.available = false
-      } 
-      case 'ArrowLeft':{ // left arrow
-        player.velX = 200;
-        Game.controls.left = true;
-        break;
+    if(player){
+      switch (e.key) {
+        case ' ':{//space
+          Game.controls.space = true
+          point.available = false
+        } 
+        case 'ArrowLeft':{ // left arrow
+          player.velX = 200;
+          Game.controls.left = true;
+          break;
+        }
+        case 'ArrowUp':{ // up arrow
+          Game.controls.up = true;
+          break;
+        }
+        case 'ArrowRight':{ // right arrow
+          player.velX = 200;
+          Game.controls.right = true;
+          break;
+        }
+        case 'ArrowDown': // down arrow
+          Game.controls.down = true;
+          break;
       }
-      case 'ArrowUp':{ // up arrow
-        Game.controls.up = true;
-        break;
-      }
-      case 'ArrowRight':{ // right arrow
-        player.velX = 200;
-        Game.controls.right = true;
-        break;
-      }
-      case 'ArrowDown': // down arrow
-        Game.controls.down = true;
-        break;
     }
   }, false);
   
@@ -387,7 +407,7 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
   }, false);
 
   canvas.onclick = (e) => {
-    if(player.totalBullet > 0){
+    if(player && player.totalBullet > 0){
       const d = distance({x: player.x+player.width/2-camera.x, y: player.y+player.height/2-camera.y}, {x: e.clientX, y: e.clientY});
       const vect = normalizeVect({x: e.clientX-(player.x+player.width/2-camera.x), y: e.clientY-(player.y+player.height/2-camera.y)}, d)
       const velX = vect.x;

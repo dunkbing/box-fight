@@ -66,4 +66,12 @@ io.sockets.on('connection', function(socket){
     }
   })
 
+  socket.on('player-died', function(playerId){
+    delete playerList[playerId]
+    console.log('player died', playerList[playerId])
+    for(const socketId in socketList){
+      socketList[socketId].emit('player-died', playerId)
+    }
+  })
+
 })
