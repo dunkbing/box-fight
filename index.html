@@ -15,12 +15,12 @@
   <div>
     <h4>left click to shoot</h4>
     <h4>right click to use grabbing gun</h4>
-    <h4>space to detach grabbing gun</h4>
+    <h4>space to detach grapping hook</h4>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
   <script type="module" src="./src/mygame/dunkbing.js"></script>
   <script>
-    document.querySelector('div').style.pointerEvents = "none"
+    [...document.querySelectorAll('h4')].forEach(ele => ele.style.pointerEvents = "none")
   </script>
   <!-- <script type="module" src="/src/mygame/client.js"></script> -->
 </body>

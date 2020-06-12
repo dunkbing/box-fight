@@ -90,7 +90,7 @@ Player.prototype.drawGun = function(context, lineToX, lineToY){
   shoot(this.x+this.width/2, this.y+this.height/2, lineToX, lineToY, context)
 }
 
-Player.prototype.useGrabbingGun = function(point, d, context, bullet){
+Player.prototype.useGrappingHook = function(point, d, context, bullet){
   d = distance({x: this.x+this.width/2, y: this.y+this.height/2}, point);
   const vect = normalizeVect({x: point.x-(this.x+this.width/2), y: point.y-(this.y+this.height/2)}, d)
   const velX = vect.x;

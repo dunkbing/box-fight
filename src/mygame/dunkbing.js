@@ -89,14 +89,14 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     bullets = bullets.concat(bulletList)
   })
 
-  socket.on('use-grabbing-gun', function(data){
+  socket.on('use-grapping-hook', function(data){
     const {playerId, point, d, grabbingBullet} = data
     const player = otherPlayers.find(p => p.id == playerId)
     if(player != null){
       Object.setPrototypeOf(player, Player.prototype)
       Object.setPrototypeOf(grabbingBullet, Bullet.prototype)
       bullets.push(grabbingBullet)
-      player.useGrabbingGun(point, d, context, grabbingBullet)
+      player.useGrappingHook(point, d, context, grabbingBullet)
     }
   })
 
@@ -321,7 +321,7 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     }
     
     if(point && point.available){
-      player.useGrabbingGun(point, d, context, grabbingBullet)
+      player.useGrappingHook(point, d, context, grabbingBullet)
     }
     
     drawAllObject()
@@ -426,15 +426,17 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     grabbingBullet = new Bullet(player.x+player.width/2, player.y+player.height/2, 10, 10, null, 1)
     grabbingBullet.g = 0
     bullets.push(grabbingBullet)
-    socket.emit('use-grabbing-gun', {playerId: player.id, point, d, grabbingBullet})
+    socket.emit('use-grapping-hook', {playerId: player.id, point, d, grabbingBullet})
   }
 
   canvas.onmousemove = (e) => {
-    const mouseVect = {x: e.clientX, y: e.clientY}
-    const playerVect = {x: player.x+player.width/2-camera.x, y: player.y+player.height/2-camera.y}
-    const d = distance(playerVect, mouseVect)
-    const gunVect = normalizeVect({x: mouseVect.x-playerVect.x, y: mouseVect.y-playerVect.y}, d)
-    const gunTipPos = {x: gunVect.x*30, y: gunVect.y*30}
+    if(player){
+      const mouseVect = {x: e.clientX, y: e.clientY}
+      const playerVect = {x: player.x+player.width/2-camera.x, y: player.y+player.height/2-camera.y}
+      const d = distance(playerVect, mouseVect)
+      const gunVect = normalizeVect({x: mouseVect.x-playerVect.x, y: mouseVect.y-playerVect.y}, d)
+      const gunTipPos = {x: gunVect.x*30, y: gunVect.y*30}
+    }
     //player.drawGun(context, gunTipPos.x, gunTipPos.y)
   }
 

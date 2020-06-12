@@ -59,10 +59,10 @@ io.sockets.on('connection', function(socket){
     bulletList.splice(bulletList.indexOf(bullet), 1)
   })
 
-  socket.on('use-grabbing-gun', function(data){
+  socket.on('use-grapping-hook', function(data){
     const {playerId, point, d, grabbingBullet} = data
     for(const socketId in socketList){
-      socketList[socketId].emit('use-grabbing-gun', {playerId, point, d, grabbingBullet})
+      socketList[socketId].emit('use-grapping-hook', {playerId, point, d, grabbingBullet})
     }
   })
 
