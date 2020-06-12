@@ -10,7 +10,7 @@ app.use('/src', express.static(__dirname+'/src'))
 app.use('/mygame', express.static(__dirname+'/mygame'))
 app.use('/bg.png', express.static(__dirname+'/bg.png'))
 
-server.listen(2000, () => console.log('server started'))
+server.listen(process.env.PORT || 2000, () => console.log('server started'))
 
 const socketList = {}
 const playerList = {}

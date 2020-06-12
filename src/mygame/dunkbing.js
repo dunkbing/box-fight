@@ -429,5 +429,14 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
     socket.emit('use-grabbing-gun', {playerId: player.id, point, d, grabbingBullet})
   }
 
+  canvas.onmousemove = (e) => {
+    const mouseVect = {x: e.clientX, y: e.clientY}
+    const playerVect = {x: player.x+player.width/2-camera.x, y: player.y+player.height/2-camera.y}
+    const d = distance(playerVect, mouseVect)
+    const gunVect = normalizeVect({x: mouseVect.x-playerVect.x, y: mouseVect.y-playerVect.y}, d)
+    const gunTipPos = {x: gunVect.x*30, y: gunVect.y*30}
+    //player.drawGun(context, gunTipPos.x, gunTipPos.y)
+  }
+
   window.onload = window.Game.play
 })();
