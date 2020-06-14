@@ -4,6 +4,8 @@ export default function Obstacle(x, y, width, height, sprite, color){
   Rectangle.call(this, x, y, width, height, sprite)
   this.speed = 200
   this.color = color
+  this.velX = Math.random()*70+30
+  this.velY = Math.random()*70+30
   //this.sprite = sprite
 }
 
@@ -25,4 +27,11 @@ Obstacle.prototype.draw = function(context, xView, yView) {
     context.fillRect(this.x, this.y, this.width, this.height);
   }
   context.restore();
+}
+
+Obstacle.prototype.update = function(step, boundary){
+  if(this.x <= 0 || this.x + this.width >= boundary.width) this.velX = -this.velX
+  if(this.y <= 0 || this.y + this.height >= boundary.height) this.velY = -this.velY
+  this.x += this.velX*step
+  this.y += this.velY*step
 }

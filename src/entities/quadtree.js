@@ -1,7 +1,7 @@
 import {Rectangle} from './rectangle.js'
 
 export default function QuadTree(level, bound){
-  this.maxObjects = 10
+  this.maxObjects = 1000
   this.maxLevel = 5
 
   this.level = level

@@ -272,26 +272,45 @@ window.Game = {Camera, Player, Map, QuadTree, controls };
 
   const quadTreeCollisionCheck = function(){
     quadTree.clear();
+    allObjects.push(player)
     for(const obj of allObjects){
       quadTree.insert(obj)
     }
     let returnObjects = []
     for(let i = 0; i < allObjects.length; i++){
       returnObjects.length = 0
-      if(allObjects[i] === player){
-        returnObjects = quadTree.retrieve(returnObjects, quadTree.objects[i])
-        for(let x = 0; x < returnObjects.length; x++){
-          const collisionDirection = player.collide(returnObjects[x])
+      returnObjects = quadTree.retrieve(returnObjects, quadTree.objects[i])
+      if(quadTree.objects[i] === player){
+        for(const obj of returnObjects){
+          if(obj !== allObjects[i]){
+            const collisionDirection = obj.collide(allObjects[i])
+            if(obj === player){
+              if (collisionDirection == "left" || collisionDirection == "right") {
+                player.velX = 0
+                player.jumping = false
+                player.onGround = true
+                //point.available = false
+              } else if (collisionDirection == "bottom") {
+                player.jumping = false
+                player.onGround = true
+              } else if (collisionDirection == "top") {
+                player.velY *= -1
+              }
+            }
+            //console.log(direction)
+          }
+          /* const collisionDirection = player.collide(obstacle)
           if (collisionDirection == "left" || collisionDirection == "right") {
             player.velX = 0
+            player.jumping = false
+            player.onGround = true
+            //point.available = false
           } else if (collisionDirection == "bottom") {
             player.jumping = false
             player.onGround = true
           } else if (collisionDirection == "top") {
             player.velY *= -1
-          }
-          if(returnObjects[x] !== player){
-          }
+          } */
         }
       }
     }
